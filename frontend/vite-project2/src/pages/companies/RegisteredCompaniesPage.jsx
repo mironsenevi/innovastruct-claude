@@ -1,15 +1,45 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { mockCompanies } from './mockData';
 import ClientNavbar from '../../components/ClientNavbar';
 import Filter from '../../components/CompanyProfile/Filter';
-import { Star } from 'lucide-react';
+import { Star, Search, Loader, AlertCircle } from 'lucide-react';
+import { companyAPI } from '../../services/apiService';
 
 const RegisteredCompaniesPage = () => {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
-  const [filteredCompanies, setFilteredCompanies] = useState(mockCompanies);
-  const [isLoading, setIsLoading] = useState(false);
+  const [companies, setCompanies] = useState([]);
+  const [filteredCompanies, setFilteredCompanies] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState({
+    type: '',
+    location: '',
+    rating: '',
+    employeeSize: '',
+    established: ''
+  });
+
+  // Fetch companies from API
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const response = await companyAPI.getAllCompanies();
+        const companiesData = response.data;
+        setCompanies(companiesData);
+        setFilteredCompanies(companiesData);
+      } catch (err) {
+        console.error("Failed to fetch companies:", err);
+        setError(err.response?.data?.message || "Failed to load companies. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCompanies();
+  }, []);
 
   useEffect(() => {
     const handleSidebarStateChange = (event) => {
@@ -22,114 +52,72 @@ const RegisteredCompaniesPage = () => {
     };
   }, []);
 
-  const handleFilterChange = (filters) => {
+  const handleFilterChange = async (newFilters) => {
     setIsLoading(true);
+    setFilters(newFilters);
+    
     try {
-      let results = mockCompanies;
-
-      if (filters.type) {
-        results = results.filter(company => company.type === filters.type);
-      }
-
-      if (filters.location) {
+      // Call API with filters
+      const response = await companyAPI.getAllCompanies(newFilters);
+      let results = response.data;
+      
+      // Apply search query if exists
+      if (searchQuery) {
         results = results.filter(company => 
-          company.location.toLowerCase().includes(filters.location.toLowerCase())
+          company.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          company.shortDescription?.toLowerCase().includes(searchQuery.toLowerCase())
         );
       }
-
-      if (filters.rating) {
-        results = results.filter(company => 
-          company.rating >= parseFloat(filters.rating)
-        );
-      }
-
-      if (filters.employeeSize) {
-        results = results.filter(company => {
-          const employeeCount = parseInt(company.employees);
-          switch (filters.employeeSize) {
-            case 'small': return employeeCount < 100;
-            case 'medium': return employeeCount >= 100 && employeeCount <= 200;
-            case 'large': return employeeCount > 200;
-            default: return true;
-          }
-        });
-      }
-
-      if (filters.established) {
-        results = results.filter(company => {
-          const year = new Date(company.established).getFullYear();
-          switch (filters.established) {
-            case 'before2000': return year < 2000;
-            case '2000to2010': return year >= 2000 && year <= 2010;
-            case 'after2010': return year > 2010;
-            default: return true;
-          }
-        });
-      }
-
+      
       setFilteredCompanies(results);
+    } catch (err) {
+      console.error("Error applying filters:", err);
+      setError("Failed to filter companies. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
-  const handleSearch = (event) => {
-    const query = event.target.value.toLowerCase();
+
+  const handleSearch = async (e) => {
+    const query = e.target.value;
     setSearchQuery(query);
     
-    let results = mockCompanies;
-    if (query) {
-      results = results.filter(company => 
-        company.name.toLowerCase().includes(query)
-      );
+    if (query === '') {
+      handleFilterChange(filters); // Reset to current filters only
+      return;
     }
-    setFilteredCompanies(results);
+    
+    setIsLoading(true);
+    
+    try {
+      // Apply search on existing filtered results
+      const results = companies.filter(company => 
+        company.companyName.toLowerCase().includes(query.toLowerCase()) ||
+        company.shortDescription?.toLowerCase().includes(query.toLowerCase())
+      );
+      setFilteredCompanies(results);
+    } catch (err) {
+      console.error("Error searching companies:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
-
+  
   const renderStars = (rating) => {
     return (
-      <div className="flex items-center gap-1">
-        {[1, 2, 3, 4, 5].map((index) => {
-          const difference = rating - index + 1;
-          
-          if (difference >= 1) {
-            // Full star
-            return (
-              <Star
-                key={index}
-                className="w-5 h-5 text-yellow-400"
-                fill="currentColor"
-              />
-            );
-          } else if (difference > 0 && difference < 1) {
-            // Half star
-            return (
-              <div key={index} className="relative">
-                <Star className="w-5 h-5 text-gray-300" fill="currentColor" />
-                <div
-                  className="absolute inset-0 overflow-hidden"
-                  style={{ width: '50%' }}
-                >
-                  <Star className="w-5 h-5 text-yellow-400" fill="currentColor" />
-                </div>
-              </div>
-            );
-          } else {
-            // Empty star
-            return (
-              <Star
-                key={index}
-                className="w-5 h-5 text-gray-300"
-                fill="currentColor"
-              />
-            );
-          }
-        })}
-        <span className="ml-2 text-sm text-gray-600">({rating.toFixed(1)})</span>
+      <div className="flex items-center mt-2">
+        {[...Array(5)].map((_, i) => (
+          <Star
+            key={i}
+            className={`h-5 w-5 ${
+              i < Math.round(rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'
+            }`}
+          />
+        ))}
+        <span className="ml-2 text-gray-600">{rating.toFixed(1)}</span>
       </div>
     );
   };
-
-            
 
   return (
     <div className="flex">
@@ -153,59 +141,77 @@ const RegisteredCompaniesPage = () => {
                 className="w-full p-4 pl-12 pr-4 text-gray-900 border rounded-lg focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400"
               />
               <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                <svg 
-                  className="w-5 h-5 text-gray-500"
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth="2" 
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
+                <Search className="w-5 h-5 text-gray-500" />
               </div>
             </div>
           </div>
-
           
-          
-          <Filter onFilterChange={handleFilterChange} />
-
-          {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="loading loading-spinner loading-lg text-yellow-400"></div>
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="md:w-1/4">
+              <Filter onFilterChange={handleFilterChange} />
             </div>
-          ) : filteredCompanies.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-600 text-lg">No companies found matching your criteria.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {filteredCompanies.map((company) => (
-                <Link to={`/client/companies/${company.id}`} key={company.id} className="block h-full">
-                  <div className="card bg-base-100 shadow-xl h-full hover:shadow-2xl transition-shadow">
-                    <figure className="h-48 w-full">
-                      <img 
-                        src={company.coverImage} 
-                        alt={company.name} 
-                        className="w-full h-full object-cover" 
-                      />
-                    </figure>
-                    <div className="card-body flex flex-col justify-between p-6">
-                      <div>
-                        <h2 className="card-title text-xl font-bold mb-2">{company.name}</h2>
-                        <p className="text-gray-600 line-clamp-2 mb-4">{company.shortDescription}</p>
-                      </div>
-                      {renderStars(company.rating)}
+            
+            <div className="md:w-3/4">
+              {error && (
+                <div className="bg-red-50 p-4 rounded-lg text-red-800 mb-6">
+                  <div className="flex">
+                    <AlertCircle className="h-5 w-5 mr-2" />
+                    <div>
+                      <p className="font-medium">Error loading companies</p>
+                      <p>{error}</p>
                     </div>
                   </div>
-                </Link>
-              ))}
+                </div>
+              )}
+              
+              {isLoading ? (
+                <div className="flex justify-center items-center h-64">
+                  <Loader className="animate-spin h-8 w-8 text-yellow-500" />
+                </div>
+              ) : filteredCompanies.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <h3 className="text-lg font-medium text-gray-900">No companies found</h3>
+                  <p className="mt-2 text-gray-500">Try adjusting your search or filter criteria</p>
+                  <button 
+                    onClick={() => {
+                      setSearchQuery('');
+                      setFilters({});
+                      handleFilterChange({});
+                    }} 
+                    className="mt-4 text-yellow-600 hover:text-yellow-500 font-medium"
+                  >
+                    Clear all filters
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                  {filteredCompanies.map((company) => (
+                    <Link to={`/client/companies/${company.id}`} key={company.id} className="block h-full">
+                      <div className="bg-white shadow-xl h-full hover:shadow-2xl transition-shadow rounded-xl overflow-hidden">
+                        <figure className="h-48 w-full">
+                          <img 
+                            src={company.coverImage || "https://placehold.co/400x200?text=No+Image"} 
+                            alt={company.companyName} 
+                            className="w-full h-full object-cover" 
+                          />
+                        </figure>
+                        <div className="p-6 flex flex-col justify-between h-[calc(100%-12rem)]">
+                          <div>
+                            <h2 className="text-xl font-bold mb-2">{company.companyName}</h2>
+                            <p className="text-gray-600 line-clamp-2 mb-4">{company.shortDescription}</p>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            {renderStars(company.rating || 0)}
+                            <div className="badge badge-outline">{company.location}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

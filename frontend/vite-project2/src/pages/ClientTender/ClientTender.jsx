@@ -9,119 +9,25 @@ import {
 
 const ClientTender = () => {
   // In a real app, this would come from an API call
-  const [userTenders, setUserTenders] = useState([
-    {
-      "id": 1,
-      "title": "Family Home Construction",
-      "description": "Building a new family home with a modern design.",
-      "budget": 300000,
-      "deadline": "2025-09-30",
-      "status": "active",
-      "bidsCount": 4,
-      "lowestBid": 290000,
-      "createdAt": "2024-02-10"
-    },
-    {
-      "id": 2,
-      "title": "Apartment Renovation",
-      "description": "Full renovation of a two-bedroom apartment.",
-      "budget": 100000,
-      "deadline": "2024-08-15",
-      "status": "new",
-      "bidsCount": 2,
-      "lowestBid": 95000,
-      "createdAt": "2024-03-05"
-    },
-    {
-      "id": 3,
-      "title": "Backyard Landscape Upgrade",
-      "description": "Redesigning the backyard with a patio and garden.",
-      "budget": 50000,
-      "deadline": "2024-07-01",
-      "status": "active",
-      "bidsCount": 3,
-      "lowestBid": 47000,
-      "createdAt": "2024-01-20"
-    },
-    {
-      "id": 4,
-      "title": "Home Office Setup",
-      "description": "Building a dedicated home office with custom furniture.",
-      "budget": 25000,
-      "deadline": "2024-12-10",
-      "status": "new",
-      "bidsCount": 1,
-      "lowestBid": 23000,
-      "createdAt": "2024-04-01"
-    },
-    {
-      "id": 5,
-      "title": "Garage Conversion",
-      "description": "Converting the garage into a guest room.",
-      "budget": 40000,
-      "deadline": "2024-10-05",
-      "status": "active",
-      "bidsCount": 5,
-      "lowestBid": 38000,
-      "createdAt": "2024-02-15"
-    },
-    {
-      "id": 6,
-      "title": "Kitchen Remodel",
-      "description": "Upgrading the kitchen with new cabinets and appliances.",
-      "budget": 60000,
-      "deadline": "2024-09-20",
-      "status": "ended",
-      "bidsCount": 6,
-      "lowestBid": 57000,
-      "createdAt": "2024-01-10"
-    },
-    {
-      "id": 7,
-      "title": "Basement Finishing",
-      "description": "Transforming the basement into a home theater and lounge.",
-      "budget": 80000,
-      "deadline": "2025-02-28",
-      "status": "new",
-      "bidsCount": 0,
-      "lowestBid": null,
-      "createdAt": "2024-03-25"
-    },
-    {
-      "id": 8,
-      "title": "Bathroom Upgrade",
-      "description": "Modernizing the master bathroom with a new layout.",
-      "budget": 30000,
-      "deadline": "2024-11-15",
-      "status": "active",
-      "bidsCount": 3,
-      "lowestBid": 28000,
-      "createdAt": "2024-02-28"
-    },
-    {
-      "id": 9,
-      "title": "Guest House Construction",
-      "description": "Building a small guest house in the backyard.",
-      "budget": 120000,
-      "deadline": "2025-06-30",
-      "status": "new",
-      "bidsCount": 2,
-      "lowestBid": 115000,
-      "createdAt": "2024-04-10"
-    },
-    {
-      "id": 10,
-      "title": "Roof Replacement",
-      "description": "Replacing the old roof with durable materials.",
-      "budget": 50000,
-      "deadline": "2024-08-31",
-      "status": "ended",
-      "bidsCount": 7,
-      "lowestBid": 48000,
-      "createdAt": "2024-01-05"
+  // Add this useEffect to fetch client tenders:
+
+// Replace mock data with API call
+useEffect(() => {
+  const fetchClientTenders = async () => {
+    try {
+      setIsLoading(true);
+      const response = await tenderService.getClientTenders();
+      setUserTenders(response.data);
+    } catch (err) {
+      console.error('Failed to fetch tenders:', err);
+      // Keep mock data for now if fetch fails
+    } finally {
+      setIsLoading(false);
     }
-]
-);
+  };
+  
+  fetchClientTenders();
+}, []);
 
   const [selectedTender, setSelectedTender] = useState(null);
   const [isLoading, setIsLoading] = useState(false);

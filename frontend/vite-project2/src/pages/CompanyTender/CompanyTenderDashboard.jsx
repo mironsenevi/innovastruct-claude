@@ -9,21 +9,26 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import TenderDetailModal from '../../components/companyTender/TenderDetailModal.jsx';
-const mockTenders = [
-  {
-    id: 1,
-    title: "Commercial Complex Development",
-    location: "Colombo",
-    priority: "hot",
-    daysLeft: 5,
-    budget: 500000,
-    bidsCount: 12,
-    category: "Commercial",
-    description: "Development of a modern commercial complex with parking facilities",
-    status: "open"
-  },{ id: 2, title: "Luxury Apartment Construction", location: "Kandy", priority: "medium", daysLeft: 12, budget: 750000, bidsCount: 8, category: "Residential", description: "Construction of a high-end apartment complex with modern amenities", status: "open" }, { id: 3, title: "Road Expansion Project", location: "Galle", priority: "hot", daysLeft: 3, budget: 1200000, bidsCount: 15, category: "Infrastructure", description: "Widening and resurfacing of the main road connecting the city center", status: "open" }, { id: 4, title: "Eco-Friendly Resort Development", location: "Ella", priority: "high", daysLeft: 10, budget: 900000, bidsCount: 10, category: "Hospitality", description: "Construction of a sustainable resort with renewable energy solutions", status: "open" }, { id: 5, title: "Shopping Mall Renovation", location: "Negombo", priority: "medium", daysLeft: 15, budget: 600000, bidsCount: 7, category: "Commercial", description: "Upgrading interiors, adding new stores, and improving accessibility", status: "open" }, { id: 6, title: "Industrial Warehouse Construction", location: "Kurunegala", priority: "high", daysLeft: 7, budget: 850000, bidsCount: 9, category: "Industrial", description: "Building a large warehouse with advanced storage facilities", status: "open" }, { id: 7, title: "Bridge Construction Over River", location: "Anuradhapura", priority: "hot", daysLeft: 6, budget: 1300000, bidsCount: 13, category: "Infrastructure", description: "Construction of a reinforced concrete bridge for better connectivity", status: "open" }, { id: 8, title: "Hospital Expansion Project", location: "Jaffna", priority: "medium", daysLeft: 20, budget: 950000, bidsCount: 6, category: "Healthcare", description: "Expansion of an existing hospital with new wards and ICU units", status: "open" }, { id: 9, title: "Smart Office Tower Development", location: "Battaramulla", priority: "high", daysLeft: 8, budget: 1100000, bidsCount: 11, category: "Commercial", description: "Building an office tower with smart technology integration", status: "open" }, { id: 10, title: "Luxury Villa Construction", location: "Bentota", priority: "hot", daysLeft: 4, budget: 450000, bidsCount: 14, category: "Residential", description: "Development of a private luxury villa with a swimming pool", status: "open" }
+// Add this useEffect to fetch tenders from API:
+
+// Replace mock data with API call
+useEffect(() => {
+  const fetchTenders = async () => {
+    try {
+      setIsLoading(true);
+      const response = await tenderService.getCompanyTenders();
+      setTenders(response.data);
+      setFilteredTenders(response.data);
+    } catch (err) {
+      console.error('Failed to fetch tenders:', err);
+      // Keep mock data for now if fetch fails
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
-];
+  fetchTenders();
+}, []);
 
 const CompanyTenderDashboard = () => {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);

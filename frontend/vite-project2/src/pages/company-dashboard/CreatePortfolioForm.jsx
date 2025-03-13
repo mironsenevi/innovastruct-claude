@@ -704,82 +704,74 @@ const CreatePortfolioForm = ({ onCancel }) => {
     );
   };
 
-  const handleSubmit = async (e) => {
-    if (e) {
-      e.preventDefault();
-    }
+ // Focus on the handleSubmit function:
 
-    setIsSubmitting(true);
+const handleSubmit = async (e) => {
+  if (e) {
+    e.preventDefault();
+  }
 
-    try {
-      const formDataObj = new FormData();
+  setIsSubmitting(true);
 
-      // Add project images
-      formData.projects.forEach((project) => {
-        project.images.forEach((image) => {
-          formDataObj.append("projectImages", image);
-        });
+  try {
+    const formDataObj = new FormData();
+
+    // Add project images
+    formData.projects.forEach((project, index) => {
+      project.images.forEach((image) => {
+        formDataObj.append(`projectImages`, image);
       });
+    });
 
-      // Add certificate images
-      formData.certifications.forEach((cert) => {
-        if (cert.image) {
-          formDataObj.append("certificateImages", cert.image);
-        }
-      });
-
-      // Create a clean copy of form data for JSON serialization
-      const cleanFormData = {
-        ...formData,
-        // Structure contact information as expected by the backend
-        contactInformation: {
-          email: formData.email,
-          phoneNumber: formData.phone, // Note: changed from 'phone' to 'phoneNumber'
-          website: formData.website,
-        },
-        // Clear binary data
-        projects: formData.projects.map((project) => ({
-          ...project,
-          images: [],
-        })),
-        certifications: formData.certifications.map((cert) => ({
-          ...cert,
-          image: null,
-        })),
-      };
-
-      // Remove standalone contact fields since they're now in contactInformation
-      delete cleanFormData.email;
-      delete cleanFormData.phone;
-      delete cleanFormData.website;
-
-      // Log the data being sent to verify contact info structure
-      console.log("Sending data:", cleanFormData);
-
-      formDataObj.append("companyData", JSON.stringify(cleanFormData));
-
-      const response = await axios.post(
-        "http://localhost:8080/company/portfolio",
-        formDataObj,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      if (response.status === 201) {
-        const createdCompany = response.data;
-        console.log("Created company:", createdCompany);
-        navigate(`/company/profile/${createdCompany.id}`);
+    // Add certificate images
+    formData.certifications.forEach((cert, index) => {
+      if (cert.image) {
+        formDataObj.append(`certificateImages`, cert.image);
       }
-    } catch (error) {
-      console.error("Error submitting form:", error);
-      alert(`Error creating company portfolio: ${error.message}`);
-    } finally {
-      setIsSubmitting(false);
+    });
+
+    // Create a clean copy of form data for JSON serialization
+    const cleanFormData = {
+      ...formData,
+      // Structure contact information as expected by the backend
+      contactInformation: {
+        email: formData.email,
+        phoneNumber: formData.phone,
+        website: formData.website || null,
+      },
+      // Clear binary data
+      projects: formData.projects.map((project) => ({
+        ...project,
+        images: [],
+      })),
+      certifications: formData.certifications.map((cert) => ({
+        ...cert,
+        image: null,
+      })),
+    };
+
+    // Remove standalone contact fields since they're now in contactInformation
+    delete cleanFormData.email;
+    delete cleanFormData.phone;
+    delete cleanFormData.website;
+
+    // Append the JSON data
+    formDataObj.append("companyData", JSON.stringify(cleanFormData));
+
+    const response = await companyService.createCompanyProfile(formDataObj);
+
+    if (response.status === 201) {
+      const createdCompany = response.data;
+      console.log("Created company:", createdCompany);
+      navigate(`/company/profile/${createdCompany.id}`);
     }
-  };
+  } catch (error) {
+    console.error("Error submitting form:", error);
+    alert(`Error creating company portfolio: ${error.response?.data?.message || error.message}`);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   // Update the handleNextStep function
   const handleNextStep = () => {

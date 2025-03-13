@@ -46,6 +46,52 @@ const TenderCard = ({ tender, onBidSubmit }) => {
       [name]: type === 'file' ? files[0] : value
     }));
   };
+  // Focus on the handleSubmitBid function:
+
+const handleSubmitBid = async () => {
+  if (!bidForm.amount || isNaN(Number(bidForm.amount)) || Number(bidForm.amount) <= 0) {
+    setBidError('Please enter a valid bid amount');
+    return;
+  }
+  
+  setIsSubmittingBid(true);
+  setBidError(null);
+  
+  try {
+    const formData = new FormData();
+    
+    // Add bid data as JSON string
+    const bidData = {
+      tenderId: tender.id,
+      amount: Number(bidForm.amount),
+      comment: bidForm.comment,
+    };
+    formData.append('bidData', JSON.stringify(bidData));
+    
+    // Add files if selected
+    if (bidForm.technicalProposal) {
+      formData.append('technicalProposal', bidForm.technicalProposal);
+    }
+    
+    if (bidForm.financialProposal) {
+      formData.append('financialProposal', bidForm.financialProposal);
+    }
+    
+    await tenderService.submitBid(tender.id, formData);
+    setBidSuccess(true);
+    
+    // Close modal after 2 seconds
+    setTimeout(() => {
+      setShowBidForm(false);
+      onBidSubmit && onBidSubmit();
+    }, 2000);
+    
+  } catch (err) {
+    setBidError(err.response?.data?.message || 'Failed to submit bid. Please try again.');
+  } finally {
+    setIsSubmittingBid(false);
+  }
+};
 
   const daysRemaining = getDaysRemaining();
 

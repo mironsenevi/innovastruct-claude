@@ -1,140 +1,146 @@
-import { createContext, useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { authService } from '../services/apiService';
+import axios from 'axios';
 
-const AuthContext = createContext(null);
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
-export const AuthProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const navigate = useNavigate();
+// Create axios instance with default config
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-  useEffect(() => {
-    // Check if user is stored in local storage on initial load
-    const storedUser = localStorage.getItem('user');
+// Add request interceptor to attach token
+api.interceptors.request.use(
+  (config) => {
     const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Add response interceptor for error handling
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const { response } = error;
     
-    if (storedUser && token) {
-      setCurrentUser(JSON.parse(storedUser));
+    // Handle token expiration
+    if (response && response.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
     }
     
-    setLoading(false);
-  }, []);
-
-  const login = async (username, password) => {
-    try {
-      setError(null);
-      setLoading(true);
-      const response = await authService.login(username, password);
-      
-      // Store token and user data
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data));
-      
-      setCurrentUser(response.data);
-      
-      // Redirect based on user role
-      if (response.data.roles.includes('ROLE_CLIENT')) {
-        navigate('/client/home');
-      } else if (response.data.roles.includes('ROLE_COMPANY')) {
-        navigate('/company/home');
-      } else {
-        navigate('/');
-      }
-      
-      return response.data;
-    } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const registerClient = async (userData) => {
-    try {
-      setError(null);
-      setLoading(true);
-      const response = await authService.registerClient(userData);
-      return response.data;
-    } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const registerCompany = async (userData) => {
-    try {
-      setError(null);
-      setLoading(true);
-      const response = await authService.registerCompany(userData);
-      return response.data;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const verifyOTP = async (email, otp) => {
-    try {
-      setError(null);
-      setLoading(true);
-      const response = await authService.verifyOTP(email, otp);
-      return response.data;
-    } catch (err) {
-      setError(err.response?.data?.message || 'Verification failed');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setCurrentUser(null);
-    navigate('/login');
-  };
-
-  const isAuthenticated = () => {
-    return !!currentUser && !!localStorage.getItem('token');
-  };
-
-  const isClient = () => {
-    return currentUser && currentUser.roles && currentUser.roles.includes('ROLE_CLIENT');
-  };
-
-  const isCompany = () => {
-    return currentUser && currentUser.roles && currentUser.roles.includes('ROLE_COMPANY');
-  };
-
-  return (
-    <AuthContext.Provider
-      value={{
-        currentUser,
-        loading,
-        error,
-        login,
-        logout,
-        registerClient,
-        registerCompany,
-        verifyOTP,
-        isAuthenticated,
-        isClient,
-        isCompany,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    return Promise.reject(error);
   }
-  return context;
+);
+
+// Auth services
+export const authService = {
+  login: (username, password) => 
+    api.post('/auth/login', { username, password }),
+  
+  registerClient: (userData) => 
+    api.post('/auth/register/client', userData),
+  
+  registerCompany: (userData) => 
+    api.post('/auth/register/company', userData),
+  
+  verifyOTP: (email, otp) => 
+    api.post('/auth/verify', { email, otp }),
+  
+  resendOTP: (email) => 
+    api.post('/auth/resend-otp', { email }),
 };
+
+// Company services
+export const companyService = {
+  getAllCompanies: (filters = {}) => 
+    api.get('/company/portfolios', { params: filters }),
+  
+  getCompanyById: (id) => 
+    api.get(`/company/portfolio/${id}`),
+  
+  getCompanyByUserId: (userId) => 
+    api.get(`/company/portfolio/user/${userId}`),
+  
+  createCompanyProfile: (formData) => 
+    api.post('/company/portfolio', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }),
+  
+  updateCompanyProfile: (id, formData) => 
+    api.put(`/company/portfolio/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }),
+  
+  deleteCompanyProfile: (id) => 
+    api.delete(`/company/portfolio/${id}`),
+};
+
+// Tender services
+export const tenderService = {
+  getClientTenders: () => 
+    api.get('/tenders/client'),
+  
+  getCompanyTenders: (filters = {}) => 
+    api.get('/tenders', { params: filters }),
+  
+  getTenderById: (id) => 
+    api.get(`/tenders/${id}`),
+  
+  createTender: (formData) => 
+    api.post('/tenders', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }),
+  
+  updateTender: (id, formData) => 
+    api.put(`/tenders/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }),
+  
+  deleteTender: (id) => 
+    api.delete(`/tenders/${id}`),
+  
+  submitBid: (tenderId, formData) => 
+    api.post(`/tenders/${tenderId}/bids`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }),
+  
+  getActiveBids: () => 
+    api.get('/tenders/bids/company'),
+  
+  awardBid: (tenderId, bidId) => 
+    api.put(`/tenders/${tenderId}/award/${bidId}`),
+  
+  getTenderHeatmapData: () => 
+    api.get('/tenders/map'),
+  
+  getTenderAnalytics: () => 
+    api.get('/tenders/analytics'),
+};
+
+// Review services
+export const reviewService = {
+  getCompanyReviews: (companyId) => 
+    api.get(`/reviews/company/${companyId}`),
+  
+  submitReview: (reviewData) => 
+    api.post('/reviews', reviewData),
+};
+
+export { api };

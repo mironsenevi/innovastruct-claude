@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, RefreshCw } from 'lucide-react';
 
 const VerifyOTP = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { verifyOTP, error } = useAuth();
+  const { verifyOTP, error: authError } = useAuth();
+  
   const [otp, setOtp] = useState('');
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
+  const [error, setError] = useState(null);
   
   useEffect(() => {
     // Get email from location state
@@ -38,24 +40,26 @@ const VerifyOTP = () => {
   
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
     
     if (otp.length !== 6) {
+      setError('Please enter a valid 6-digit code');
       return;
     }
     
     setIsSubmitting(true);
     
     try {
-      const response = await verifyOTP(email, otp);
+      await verifyOTP(email, otp);
       setSuccess(true);
       
-      // Navigate to appropriate page based on user role after 2 seconds
+      // Navigate to login page after successful verification
       setTimeout(() => {
-        navigate('/login');
+        navigate('/login', { state: { verified: true } });
       }, 2000);
       
     } catch (err) {
-      // Error is handled in auth context
+      setError(err.response?.data?.message || 'Failed to verify OTP. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -64,13 +68,29 @@ const VerifyOTP = () => {
   const handleResendOTP = async () => {
     setCanResend(false);
     setCountdown(60);
+    setError(null);
     
     try {
-      // Call the resend OTP API
-      // For now, just show a message (you can implement the actual API call later)
-      alert(`A new OTP has been sent to ${email}`);
+      // Call the API to resend OTP
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}/auth/resend-otp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to resend OTP');
+      }
+      
+      // Show success message
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      console.error('Failed to resend OTP:', err);
+      setError(err.message || 'Failed to resend OTP');
     }
   };
   
@@ -80,18 +100,18 @@ const VerifyOTP = () => {
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Verify Your Account</h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Enter the verification code sent to {email}
+            Enter the verification code sent to <span className="font-medium text-yellow-600">{email}</span>
           </p>
         </div>
         
-        {error && (
+        {(error || authError) && (
           <div className="bg-red-50 border-l-4 border-red-400 p-4">
             <div className="flex">
               <div className="flex-shrink-0">
                 <AlertCircle className="h-5 w-5 text-red-400" />
               </div>
               <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
+                <p className="text-sm text-red-700">{error || authError}</p>
               </div>
             </div>
           </div>
@@ -123,8 +143,8 @@ const VerifyOTP = () => {
                 required
                 maxLength={6}
                 pattern="\d{6}"
-                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-yellow-500 focus:border-yellow-500 focus:z-10 sm:text-sm text-center tracking-widest text-lg"
-                placeholder="Enter 6-digit OTP"
+                className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-yellow-500 focus:border-yellow-500 focus:z-10 sm:text-sm text-center tracking-widest text-2xl"
+                placeholder="• • • • • •"
                 value={otp}
                 onChange={(e) => {
                   const value = e.target.value;
@@ -133,7 +153,12 @@ const VerifyOTP = () => {
                     setOtp(value);
                   }
                 }}
+                autoComplete="off"
+                autoFocus
               />
+              <p className="mt-2 text-sm text-center text-gray-500">
+                Enter the 6-digit code sent to your email
+              </p>
             </div>
           </div>
           
@@ -147,7 +172,7 @@ const VerifyOTP = () => {
             
             <button
               type="button"
-              className={`text-sm font-medium ${
+              className={`text-sm font-medium flex items-center ${
                 canResend 
                   ? 'text-yellow-600 hover:text-yellow-500'
                   : 'text-gray-400 cursor-not-allowed'
@@ -155,6 +180,7 @@ const VerifyOTP = () => {
               disabled={!canResend}
               onClick={handleResendOTP}
             >
+              <RefreshCw className={`h-3 w-3 mr-1 ${canResend ? 'animate-spin' : ''}`} />
               Resend Code
             </button>
           </div>
@@ -170,15 +196,14 @@ const VerifyOTP = () => {
           </div>
         </form>
         
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Entered the wrong email?{' '}
-          <button 
-            onClick={() => navigate(-1)} 
-            className="font-medium text-yellow-600 hover:text-yellow-500"
-          >
-            Go Back
-          </button>
-        </p>
+        <div className="text-center mt-4">
+          <p className="text-sm text-gray-600">
+            Entered the wrong email?{' '}
+            <Link to="/login" className="font-medium text-yellow-600 hover:text-yellow-500">
+              Go Back to Login
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
