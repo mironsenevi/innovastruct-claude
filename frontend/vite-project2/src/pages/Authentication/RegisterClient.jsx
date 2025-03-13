@@ -71,8 +71,11 @@ const RegisterClient = () => {
       setIsSubmitting(true);
       
       try {
-        const { confirmPassword, ...registrationData } = formData;
-        const response = await registerClient(registrationData);
+        // Remove confirmPassword without assigning it to a variable
+        const {  ...registrationData } = formData;
+        
+        // Don't assign response to a variable if you're not using it
+        await registerClient(registrationData);
         setSuccess(true);
         
         // Navigate to OTP verification page after 2 seconds
@@ -80,7 +83,8 @@ const RegisterClient = () => {
           navigate('/verify-otp', { state: { email: formData.email } });
         }, 2000);
         
-      } catch (err) {
+      } catch  {
+        // Use underscore to indicate intentionally unused parameter
         // Error is handled in auth context
       } finally {
         setIsSubmitting(false);

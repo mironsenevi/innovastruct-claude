@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
 // Create axios instance with default config
@@ -181,5 +182,6 @@ export const reviewService = {
   deleteReview: (reviewId) => 
     api.delete(`/reviews/${reviewId}`),
 };
-
+export const tenderAPI = tenderService;
+export const companyAPI = companyService;
 export { api };

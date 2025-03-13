@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import ClientNavbar from '../../components/ClientNavbar';
 import Filter from '../../components/CompanyProfile/Filter';
 import { Star, Search, Loader, AlertCircle } from 'lucide-react';
-import { companyAPI } from '../../services/apiService';
+import { companyService } from '../../services/apiService';
 
 const RegisteredCompaniesPage = () => {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
@@ -26,7 +26,7 @@ const RegisteredCompaniesPage = () => {
       try {
         setIsLoading(true);
         setError(null);
-        const response = await companyAPI.getAllCompanies();
+        const response = await companyService.getAllCompanies();
         const companiesData = response.data;
         setCompanies(companiesData);
         setFilteredCompanies(companiesData);
@@ -58,7 +58,7 @@ const RegisteredCompaniesPage = () => {
     
     try {
       // Call API with filters
-      const response = await companyAPI.getAllCompanies(newFilters);
+      const response = await companyService.getAllCompanies(newFilters);
       let results = response.data;
       
       // Apply search query if exists

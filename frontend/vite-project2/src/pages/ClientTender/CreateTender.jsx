@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ClientNavbar from "../../components/ClientNavbar";
 import { Upload, FileText, Users, Clock, Building, AlertCircle, CheckCircle } from 'lucide-react';
-import { tenderAPI } from '../../services/apiService';
-import { useAuth } from '../../context/AuthContext';
+import { tenderService } from '../../services/apiService';
+
 
 export default function CreateTender() {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  
   
   const [tender, setTender] = useState({
     title: "",
@@ -95,55 +95,58 @@ export default function CreateTender() {
 
   // Focus on the handleSubmit function:
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  const validationError = validateForm();
-  if (validationError) {
-    setError(validationError);
-    return;
-  }
-  
-  setIsSubmitting(true);
-  setError(null);
-  
-  try {
-    // Create FormData object
-    const formData = new FormData();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     
-    // Add tender data as JSON string
-    const tenderData = {
-      ...tender,
-      budget: Number(tender.budget),
-    };
-    formData.append('tenderData', JSON.stringify(tenderData));
-    
-    // Add files
-    if (files.plan) formData.append('plan', files.plan);
-    if (files.boq) formData.append('boq', files.boq);
-    
-    if (files.additionalDocs.length > 0) {
-      files.additionalDocs.forEach(doc => {
-        formData.append('additionalDocs', doc);
-      });
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
     }
     
-    // Submit the form
-    const response = await tenderService.createTender(formData);
-    setSuccess(true);
+    setIsSubmitting(true);
+    setError(null);
     
-    // Redirect to tenders list after 2 seconds
-    setTimeout(() => {
-      navigate('/client/tender');
-    }, 2000);
-    
-  } catch (err) {
-    console.error('Error creating tender:', err);
-    setError(err.response?.data?.message || 'Failed to create tender. Please try again.');
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+    try {
+      // Create FormData object
+      const formData = new FormData();
+      
+      // Add tender data as JSON string
+      const tenderData = {
+        ...tender,
+        budget: Number(tender.budget),
+      };
+      formData.append('tenderData', JSON.stringify(tenderData));
+      
+      // Add files
+      if (files.plan) formData.append('plan', files.plan);
+      if (files.boq) formData.append('boq', files.boq);
+      
+      if (files.additionalDocs.length > 0) {
+        files.additionalDocs.forEach(doc => {
+          formData.append('additionalDocs', doc);
+        });
+      }
+      
+      // Fix 2: Remove unnecessary response assignment
+      await tenderService.createTender(formData);
+      setSuccess(true);
+      
+      // Navigate to tender dashboard after 2 seconds
+      setTimeout(() => {
+        navigate('/client/tender');
+      }, 2000);
+      
+    } catch (err) {
+      console.error('Error creating tender:', err);
+      setError(err.response?.data?.message || 'Failed to create tender. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ... rest of component remains the same
+
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">

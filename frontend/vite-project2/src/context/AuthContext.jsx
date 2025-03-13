@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { authService } from '../services/apiService';
 
 const AuthContext = createContext(null);
@@ -95,6 +96,11 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+
+// Add PropTypes validation
+AuthProvider.propTypes = {
+  children: PropTypes.node.isRequired
+};
 
 export function useAuth() {
   return useContext(AuthContext);
