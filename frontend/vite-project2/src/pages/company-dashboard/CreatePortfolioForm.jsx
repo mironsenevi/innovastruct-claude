@@ -4,10 +4,12 @@ import PropTypes from "prop-types";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { companyService } from "../../services/apiService";
+import { useAuth } from "../../context/AuthContext"; // Add this import
 
 const CreatePortfolioForm = ({ onCancel }) => {
   // Add navigate hook near the top of your component
   const navigate = useNavigate();
+  const { currentUser } = useAuth(); // Add this line
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -711,76 +713,85 @@ const CreatePortfolioForm = ({ onCancel }) => {
     if (e) {
       e.preventDefault();
     }
-
+  
     if (!currentUser) {
       alert("Please log in to create a company portfolio");
       navigate("/login");
       return;
     }
-
+  
     setIsSubmitting(true);
-
+  
     try {
       const formDataObj = new FormData();
-
-      // Add project images
-      formData.projects.forEach((project, index) => {
-        project.images.forEach((image) => {
-          formDataObj.append(`projectImages`, image);
-        });
-      });
-
-      // Add certificate images
-      formData.certifications.forEach((cert, index) => {
-        if (cert.image) {
-          formDataObj.append(`certificateImages`, cert.image);
-        }
-      });
-
-      // Create a clean copy of form data for JSON serialization
+  
+      // Create a clean copy of form data that matches the backend DTO structure
       const cleanFormData = {
-        ...formData,
-        // Structure contact information as expected by the backend
+        companyName: formData.companyName,
+        licenseNumber: formData.licenseNumber,
+        shortDescription: formData.shortDescription,
+        description: formData.shortDescription, // Using short description as full description
+        establishedYear: formData.establishedYear,
+        location: formData.location,
+        employeeCount: formData.employeeCount,
+        cidaGrading: formData.cidaGrading,
+        engineerCapacity: formData.engineerCapacity,
+        services: formData.services,
+        type: "Commercial", // You might want to make this selectable
+        annualRevenue: formData.annualRevenue,
+        
+        // Structure past projects
+        pastProjects: formData.projects.map(project => ({
+          name: project.name,
+          description: project.description,
+          completionYear: project.completionYear,
+          imageUrls: [] // Will be populated by backend
+        })),
+  
+        // Structure certifications
+        certifications: formData.certifications.map(cert => ({
+          name: cert.name,
+          organization: cert.organization,
+          issueDate: cert.issueDate,
+          expiryDate: cert.expiryDate,
+          imageUrl: null // Will be populated by backend
+        })),
+  
+        // Structure contact information
         contactInformation: {
           email: formData.email,
           phoneNumber: formData.phone,
-          website: formData.website || null,
-        },
-        // Clear binary data
-        projects: formData.projects.map((project) => ({
-          ...project,
-          images: [],
-        })),
-        certifications: formData.certifications.map((cert) => ({
-          ...cert,
-          image: null,
-        })),
+          website: formData.website || null
+        }
       };
-
-      // Remove standalone contact fields since they're now in contactInformation
-      delete cleanFormData.email;
-      delete cleanFormData.phone;
-      delete cleanFormData.website;
-
+  
       // Append the JSON data
       formDataObj.append("companyData", JSON.stringify(cleanFormData));
-
-      const response = await companyService.createCompanyProfile(formDataObj);
-
-      // Create axios instance with baseURL
-      const api = axios.create({
-        baseURL: "http://localhost:8080",
+  
+      // Add project images with proper naming convention
+      formData.projects.forEach((project, projectIndex) => {
+        project.images.forEach((image, imageIndex) => {
+          formDataObj.append(
+            `projectImages`, 
+            image,
+            `project_${projectIndex}_image_${imageIndex}`
+          );
+        });
       });
-
-      // Add request interceptor to include token
-      api.interceptors.request.use((config) => {
-        const token = localStorage.getItem("token");
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
+  
+      // Add certificate images
+      formData.certifications.forEach((cert, index) => {
+        if (cert.image) {
+          formDataObj.append(
+            `certificateImages`, 
+            cert.image,
+            `certificate_${index}`
+          );
         }
-        return config;
       });
-
+  
+      const response = await companyService.createCompanyProfile(formDataObj);
+  
       if (response.status === 201) {
         const createdCompany = response.data;
         console.log("Created company:", createdCompany);
