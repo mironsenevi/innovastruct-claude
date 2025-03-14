@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ClientNavbar from "../../components/ClientNavbar";
 import { Upload, FileText, Users, Clock, Building, AlertCircle, CheckCircle } from 'lucide-react';
-import { tenderAPI } from '../../services/apiService';
+import { tenderService } from '../../services/apiService';
 import { useAuth } from '../../context/AuthContext';
 
 export default function CreateTender() {

@@ -3,6 +3,7 @@ import { ArrowLeft, Upload, Plus, Trash2, FileText } from "lucide-react";
 import PropTypes from "prop-types";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { companyService } from "../../services/apiService";
 
 const CreatePortfolioForm = ({ onCancel }) => {
   // Add navigate hook near the top of your component
@@ -704,74 +705,98 @@ const CreatePortfolioForm = ({ onCancel }) => {
     );
   };
 
- // Focus on the handleSubmit function:
+  // Focus on the handleSubmit function:
 
-const handleSubmit = async (e) => {
-  if (e) {
-    e.preventDefault();
-  }
-
-  setIsSubmitting(true);
-
-  try {
-    const formDataObj = new FormData();
-
-    // Add project images
-    formData.projects.forEach((project, index) => {
-      project.images.forEach((image) => {
-        formDataObj.append(`projectImages`, image);
-      });
-    });
-
-    // Add certificate images
-    formData.certifications.forEach((cert, index) => {
-      if (cert.image) {
-        formDataObj.append(`certificateImages`, cert.image);
-      }
-    });
-
-    // Create a clean copy of form data for JSON serialization
-    const cleanFormData = {
-      ...formData,
-      // Structure contact information as expected by the backend
-      contactInformation: {
-        email: formData.email,
-        phoneNumber: formData.phone,
-        website: formData.website || null,
-      },
-      // Clear binary data
-      projects: formData.projects.map((project) => ({
-        ...project,
-        images: [],
-      })),
-      certifications: formData.certifications.map((cert) => ({
-        ...cert,
-        image: null,
-      })),
-    };
-
-    // Remove standalone contact fields since they're now in contactInformation
-    delete cleanFormData.email;
-    delete cleanFormData.phone;
-    delete cleanFormData.website;
-
-    // Append the JSON data
-    formDataObj.append("companyData", JSON.stringify(cleanFormData));
-
-    const response = await companyService.createCompanyProfile(formDataObj);
-
-    if (response.status === 201) {
-      const createdCompany = response.data;
-      console.log("Created company:", createdCompany);
-      navigate(`/company/profile/${createdCompany.id}`);
+  const handleSubmit = async (e) => {
+    if (e) {
+      e.preventDefault();
     }
-  } catch (error) {
-    console.error("Error submitting form:", error);
-    alert(`Error creating company portfolio: ${error.response?.data?.message || error.message}`);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+
+    if (!currentUser) {
+      alert("Please log in to create a company portfolio");
+      navigate("/login");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const formDataObj = new FormData();
+
+      // Add project images
+      formData.projects.forEach((project, index) => {
+        project.images.forEach((image) => {
+          formDataObj.append(`projectImages`, image);
+        });
+      });
+
+      // Add certificate images
+      formData.certifications.forEach((cert, index) => {
+        if (cert.image) {
+          formDataObj.append(`certificateImages`, cert.image);
+        }
+      });
+
+      // Create a clean copy of form data for JSON serialization
+      const cleanFormData = {
+        ...formData,
+        // Structure contact information as expected by the backend
+        contactInformation: {
+          email: formData.email,
+          phoneNumber: formData.phone,
+          website: formData.website || null,
+        },
+        // Clear binary data
+        projects: formData.projects.map((project) => ({
+          ...project,
+          images: [],
+        })),
+        certifications: formData.certifications.map((cert) => ({
+          ...cert,
+          image: null,
+        })),
+      };
+
+      // Remove standalone contact fields since they're now in contactInformation
+      delete cleanFormData.email;
+      delete cleanFormData.phone;
+      delete cleanFormData.website;
+
+      // Append the JSON data
+      formDataObj.append("companyData", JSON.stringify(cleanFormData));
+
+      const response = await companyService.createCompanyProfile(formDataObj);
+
+      // Create axios instance with baseURL
+      const api = axios.create({
+        baseURL: "http://localhost:8080",
+      });
+
+      // Add request interceptor to include token
+      api.interceptors.request.use((config) => {
+        const token = localStorage.getItem("token");
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      });
+
+      if (response.status === 201) {
+        const createdCompany = response.data;
+        console.log("Created company:", createdCompany);
+        navigate(`/company/profile/${createdCompany.id}`);
+      }
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      alert(
+        `Error creating company portfolio: ${
+          error.response?.data?.message || error.message
+        }`
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Update the handleNextStep function
   const handleNextStep = () => {
