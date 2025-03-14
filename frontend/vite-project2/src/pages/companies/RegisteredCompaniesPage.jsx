@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import ClientNavbar from '../../components/ClientNavbar';
 import Filter from '../../components/CompanyProfile/Filter';
 import { Star, Search, Loader, AlertCircle } from 'lucide-react';
-import { companyService } from '../../services/apiService.js';
+import { companyService } from '../../services/apiService';
+
 const RegisteredCompaniesPage = () => {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const [companies, setCompanies] = useState([]);
