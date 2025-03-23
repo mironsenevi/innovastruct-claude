@@ -1,3 +1,0 @@
-# InnovaStruct
-
-backend develop here
